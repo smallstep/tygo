@@ -86,9 +86,31 @@ func (g *PackageGenerator) writeType(
 		g.writeIndent(s, depth+1)
 		s.WriteByte('}')
 	case *ast.Ident:
-		if t.String() == "any" {
+		var i *ast.InterfaceType
+		if t.Obj != nil  {
+			if typ, ok := t.Obj.Decl.(*ast.TypeSpec); ok {
+				i, _ = typ.Type.(*ast.InterfaceType)
+			}
+		}
+
+		switch {
+		// for eg: struct fields with an interface type, use
+		// the mapped or fallback type. Better typing would require
+		// the use of the type-checking module
+		case i != nil:
+			mappedTsType, ok := g.conf.TypeMappings[t.Name]
+			if ok {
+				s.WriteString(mappedTsType)
+			} else {
+				s.WriteString(getIdent(g.conf.FallbackType))
+				s.WriteString(" /* ")
+				s.WriteString(t.Name)
+				s.WriteString(" */")
+			}
+
+		case t.String() == "any":
 			s.WriteString(getIdent(g.conf.FallbackType))
-		} else {
+		default:
 			s.WriteString(getIdent(t.String()))
 		}
 	case *ast.SelectorExpr:
